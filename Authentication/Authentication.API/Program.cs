@@ -1,6 +1,7 @@
 using Authentication.API;
 using Authentication.API.Extensions;
 using Authentication.Infrastructure;
+using Authentication.Infrastructure.Persistence;
 using Carter;
 using Serilog;
 
@@ -18,6 +19,7 @@ builder.Host.AddAppConfigurations();
 builder.Services.AddCarter();
 builder.Services.AddConfigurationSettings(builder.Configuration);
 builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services.AddHostedService<DbSeeder>();
 var app = builder.Build();
 try
 {
