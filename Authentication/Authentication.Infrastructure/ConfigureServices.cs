@@ -22,7 +22,7 @@ public static class ConfigureServices
         if (dbSettings == null || string.IsNullOrWhiteSpace(dbSettings.ConnectionString))
             throw new InvalidOperationException("DbSettings:ConnectionString is not configured properly.");
 
-        services.AddDbContext<UserContext>(options =>
+        services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(dbSettings.ConnectionString));
 
         return services;
