@@ -9,13 +9,10 @@
 	<ItemGroup>
 		<Compile Remove="Extensions\**" />
 		<Compile Remove="Persistence\Configurations\**" />
-		<Compile Remove="Repositories\**" />
 		<EmbeddedResource Remove="Extensions\**" />
 		<EmbeddedResource Remove="Persistence\Configurations\**" />
-		<EmbeddedResource Remove="Repositories\**" />
 		<None Remove="Extensions\**" />
 		<None Remove="Persistence\Configurations\**" />
-		<None Remove="Repositories\**" />
 	</ItemGroup>
 
 	<!--<ItemGroup>

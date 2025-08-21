@@ -12,6 +12,7 @@ public class User : IDateTracking
     public string Email { get; set; }
     public string FirstName { get; set; }
     public string LastName { get; set; }
+    public bool IsActive { get; set; }
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     public DateTimeOffset CreatedDate { get; set; }
     public DateTimeOffset? LastModifiedDate { get; set; }

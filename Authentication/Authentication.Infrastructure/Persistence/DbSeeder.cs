@@ -90,6 +90,7 @@ public class DbSeeder : IHostedService
                 Email = "admin@gmail.com",
                 FirstName = "System",
                 LastName = "Administrator",
+                IsActive = true,
             };
 
             await context.Users.AddAsync(adminUser);

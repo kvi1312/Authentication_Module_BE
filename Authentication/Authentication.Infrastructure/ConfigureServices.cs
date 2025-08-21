@@ -1,4 +1,7 @@
 ﻿using Authentication.Application.Common.Models;
+using Authentication.Domain.Interfaces;
+using Authentication.Domain.Interfaces.Repositories;
+using Authentication.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +14,11 @@ public static class ConfigureServices
         IConfiguration configuration)
     {
         services.ConfigureUserDbContext(configuration);
+        services.AddScoped<DbFactory>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped(typeof(IRepositoryBase<>), typeof(RepositoryBase<>));
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserServices, UserServices>();
         return services;
     }
 
