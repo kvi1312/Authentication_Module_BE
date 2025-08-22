@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -5,6 +6,7 @@ using System.Text;
 using Authentication.Application.Interfaces;
 using Authentication.Domain.Configurations;
 using Authentication.Domain.Entities;
+using Authentication.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -14,16 +16,21 @@ namespace Authentication.Infrastructure.Services;
 
 public class JwtService : IJwtService
 {
-    private readonly JwtSettings _jwtSettings;
+    private readonly IOptionsMonitor<JwtSettings> _jwtOptions;
     private readonly ILogger<JwtService> _logger;
+    private static readonly ConcurrentDictionary<string, DateTime> _blacklistedTokens = new();
 
-    public JwtService(IOptions<JwtSettings> jwtSettings, ILogger<JwtService> logger)
+    public JwtService(IOptionsMonitor<JwtSettings> jwtOptions, ILogger<JwtService> logger)
     {
-        _jwtSettings = jwtSettings.Value;
+        _jwtOptions = jwtOptions;
         _logger = logger;
     }
+
+    private JwtSettings GetCurrentSettings() => TokenConfigService.GetRuntimeSettings(_jwtOptions);
+
     public string GenerateAccessToken(User user, IEnumerable<string> roles)
     {
+        var settings = GetCurrentSettings();
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -35,14 +42,14 @@ public class JwtService : IJwtService
 
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.SecretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
-            issuer: _jwtSettings.Issuer,
-            audience: _jwtSettings.Audience,
+            issuer: settings.Issuer,
+            audience: settings.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes),
+            expires: DateTime.UtcNow.AddMinutes(settings.ExpiryMinutes),
             signingCredentials: credentials
         );
 
@@ -61,15 +68,16 @@ public class JwtService : IJwtService
     {
         try
         {
+            var settings = GetCurrentSettings();
             var tokenHandler = new JwtSecurityTokenHandler();
             var validationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey)),
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.SecretKey)),
                 ValidateIssuer = true,
-                ValidIssuer = _jwtSettings.Issuer,
+                ValidIssuer = settings.Issuer,
                 ValidateAudience = true,
-                ValidAudience = _jwtSettings.Audience,
+                ValidAudience = settings.Audience,
                 ValidateLifetime = false
             };
 
@@ -87,8 +95,7 @@ public class JwtService : IJwtService
     {
         try
         {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwt = tokenHandler.ReadJwtToken(token);
+            var jwt = GetToken(token);
             return jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
         }
         catch (Exception ex)
@@ -100,21 +107,46 @@ public class JwtService : IJwtService
 
     public bool IsTokenExpired(string token)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var jwt = GetToken(token);
+            return jwt.ValidTo < DateTime.UtcNow;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking token expiration");
+            return true;
+        }
     }
 
     public DateTime GetTokenExpirationDate(string token)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var jwt = GetToken(token);
+            return jwt.ValidTo;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting token expiration date");
+            return DateTime.MinValue;
+        }
     }
 
     public Task<bool> IsTokenBlacklistedAsync(string jti)
     {
-        throw new NotImplementedException();
+        return Task.FromResult(_blacklistedTokens.ContainsKey(jti));
     }
 
     public Task BlacklistTokenAsync(string jti, DateTime expiry)
     {
-        throw new NotImplementedException();
+        _blacklistedTokens.TryAdd(jti, expiry);
+        return Task.CompletedTask;
+    }
+
+    private JwtSecurityToken GetToken(string token)
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        return tokenHandler.ReadJwtToken(token);
     }
 }

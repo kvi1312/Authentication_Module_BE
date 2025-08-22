@@ -34,18 +34,28 @@ public class UserRepository : RepositoryBase<User>, IUserRepository
 
     public Task<bool> ExistsAsync(string username, string email) => DbSet.AnyAsync(x => x.Username == username && x.Email == email);
 
-    public Task<IEnumerable<User>> GetByUserTypeAsync(UserType userType)
+    public async Task<IEnumerable<User>> GetByUserTypeAsync(UserType userType)
     {
-        throw new NotImplementedException();
+        return await DbSet
+            .Include(u => u.UserRoles)
+            .ThenInclude(ur => ur.Role)
+            .Where(u => u.UserRoles.Any(ur => ur.Role.UserType == userType))
+            .ToListAsync();
     }
 
-    public Task<IEnumerable<User>> GetActiveUsersAsync()
+    public async Task<IEnumerable<User>> GetActiveUsersAsync()
     {
-        throw new NotImplementedException();
+        return await DbSet
+            .Where(u => u.IsActive)
+            .ToListAsync();
     }
 
-    public Task<User?> GetByUsernameWithUserTypeAsync(string username, UserType userType)
+    public async Task<User?> GetByUsernameWithUserTypeAsync(string username, UserType userType)
     {
-        throw new NotImplementedException();
+        return await DbSet
+            .Include(u => u.UserRoles)
+            .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.Username == username &&
+                                u.UserRoles.Any(ur => ur.Role.UserType == userType));
     }
 }

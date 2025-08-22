@@ -20,51 +20,142 @@ public class AuthController : ControllerBase
         _logger = logger;
     }
 
-    [HttpPost("login/{userType}")]
-    public async Task<ActionResult<LoginResponse>> Login(UserType userType, LoginRequest request)
+    [HttpPost("login")]
+    public async Task<ActionResult<LoginResponse>> Login(LoginRequest request)
     {
         var command = new LoginCommand
         {
             Username = request.Username,
             Password = request.Password,
-            UserType = userType,
-            RememberMe = request.RememberMe
+            RememberMe = request.RememberMe,
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+            DeviceInfo = Request.Headers["User-Agent"].ToString()
         };
 
         var result = await _mediator.Send(command);
-        
+
         if (!result.Success) return BadRequest(result);
 
-        if (!request.RememberMe) return Ok(result);
-        
-        var cookieOptions = new CookieOptions
+        // Set secure cookies for remember me functionality
+        if (request.RememberMe && !string.IsNullOrEmpty(result.RefreshToken))
         {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Strict,
-            Expires = result.ExpiresAt
-        };
-            
-        Response.Cookies.Append("refreshToken", result.RefreshToken, cookieOptions);
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTimeOffset.UtcNow.AddDays(30),
+                Path = "/"
+            };
 
-        return Ok(result);
+            Response.Cookies.Append("refreshToken", result.RefreshToken, cookieOptions);
+
+
+            if (!string.IsNullOrEmpty(result.RememberMeToken))
+            {
+                Response.Cookies.Append("rememberMe", result.RememberMeToken, cookieOptions);
+            }
+        }
+
+        var safeResult = new LoginResponse
+        {
+            Success = result.Success,
+            Message = result.Message,
+            AccessToken = result.AccessToken,
+            ExpiresAt = result.ExpiresAt,
+            User = result.User
+        };
+
+        return Ok(safeResult);
     }
-    
+
     [HttpPost("refresh")]
-    public async Task<ActionResult<LoginResponse>> RefreshToken([FromBody] RefreshTokenRequest request)
+    public async Task<ActionResult<RefreshTokenResponse>> RefreshToken([FromBody] RefreshTokenRequest? request = null)
     {
-        var command = new RefreshTokenCommand { RefreshToken = request.RefreshToken };
+        string? refreshToken = request?.RefreshToken;
+
+        if (string.IsNullOrEmpty(refreshToken))
+        {
+            refreshToken = Request.Cookies["refreshToken"];
+        }
+
+        if (string.IsNullOrEmpty(refreshToken))
+        {
+            return BadRequest(new { message = "Refresh token is required" });
+        }
+
+        var command = new RefreshTokenCommand
+        {
+            RefreshToken = refreshToken,
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+            DeviceInfo = Request.Headers["User-Agent"].ToString()
+        };
+
         var result = await _mediator.Send(command);
+
+        if (result.Success && !string.IsNullOrEmpty(result.RefreshToken))
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = result.ExpiresAt,
+                Path = "/"
+            };
+
+            Response.Cookies.Append("refreshToken", result.RefreshToken, cookieOptions);
+        }
+
         return result.Success ? Ok(result) : BadRequest(result);
     }
-    
+
     [HttpPost("logout")]
     [Authorize]
-    public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
+    public async Task<IActionResult> Logout([FromBody] LogoutRequest? request = null)
     {
-        var command = new LogoutCommand { RefreshToken = request.RefreshToken };
+        string? refreshToken = request?.RefreshToken ?? Request.Cookies["refreshToken"];
+        string? accessToken = null;
+        if (Request.Headers.Authorization.Any())
+        {
+            var authHeader = Request.Headers.Authorization.First();
+            if (authHeader?.StartsWith("Bearer ") == true)
+            {
+                accessToken = authHeader.Substring("Bearer ".Length).Trim();
+            }
+        }
+
+        var command = new LogoutCommand
+        {
+            RefreshToken = refreshToken,
+            AccessToken = accessToken
+        };
+
         var result = await _mediator.Send(command);
         Response.Cookies.Delete("refreshToken");
-        return result ? Ok(new { message = "Logged out successfully" }) : BadRequest();
+        Response.Cookies.Delete("rememberMe");
+
+        return result ? Ok(new { message = "Logged out successfully" }) : BadRequest(new { message = "Logout failed" });
+    }
+
+    [HttpPost("register")]
+    public async Task<ActionResult<RegisterResponse>> Register([FromBody] RegisterRequest request)
+    {
+        var command = new RegisterCommand
+        {
+            Username = request.Username,
+            Email = request.Email,
+            Password = request.Password,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+            DeviceInfo = Request.Headers["User-Agent"].ToString()
+        };
+
+        var result = await _mediator.Send(command);
+
+        if (!result.Success) return BadRequest(result);
+
+        return Ok(result);
     }
 }

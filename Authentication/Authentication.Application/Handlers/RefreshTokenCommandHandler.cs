@@ -31,31 +31,29 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
             _logger.LogInformation("Refresh token attempt");
 
             var storedRefreshToken = await _unitOfWork.RefreshTokensRepository.GetByTokenAsync(request.RefreshToken);
-            
+
             if (storedRefreshToken == null || !storedRefreshToken.IsValid())
             {
                 _logger.LogWarning("Invalid or expired refresh token");
-                return new RefreshTokenResponse 
-                { 
-                    Success = false, 
-                    Message = "Invalid or expired refresh token" 
+                return new RefreshTokenResponse
+                {
+                    Success = false,
+                    Message = "Invalid or expired refresh token"
                 };
             }
 
-            // Get user with roles
             var user = await _unitOfWork.UserRepository.GetWithRolesAsync(storedRefreshToken.UserId);
-            
+
             if (user == null || !user.IsActive)
             {
                 _logger.LogWarning("User not found or inactive for refresh token");
-                return new RefreshTokenResponse 
-                { 
-                    Success = false, 
-                    Message = "User not found or inactive" 
+                return new RefreshTokenResponse
+                {
+                    Success = false,
+                    Message = "User not found or inactive"
                 };
             }
 
-            // Mark old refresh token as used
             storedRefreshToken.MarkAsUsed();
 
             var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
@@ -68,10 +66,10 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
             if (string.IsNullOrEmpty(jwtId))
             {
                 _logger.LogError("Failed to extract JWT ID from new access token");
-                return new RefreshTokenResponse 
-                { 
-                    Success = false, 
-                    Message = "Token generation failed" 
+                return new RefreshTokenResponse
+                {
+                    Success = false,
+                    Message = "Token generation failed"
                 };
             }
 
@@ -80,7 +78,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
                 newRefreshToken,
                 jwtId,
                 user.Id,
-                TimeSpan.FromDays(7) // Default refresh token validity
+                TimeSpan.FromDays(7)
             );
 
             await _unitOfWork.RefreshTokensRepository.AddAsync(newRefreshTokenEntity);
@@ -100,10 +98,10 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred during token refresh");
-            return new RefreshTokenResponse 
-            { 
-                Success = false, 
-                Message = "An error occurred during token refresh" 
+            return new RefreshTokenResponse
+            {
+                Success = false,
+                Message = "An error occurred during token refresh"
             };
         }
     }

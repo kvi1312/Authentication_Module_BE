@@ -16,16 +16,12 @@ public class LoginCommandValidator : AbstractValidator<LoginCommand>
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Password is required")
             .MinimumLength(6).WithMessage("Password must be at least 6 characters");
-
-        RuleFor(x => x.UserType)
-            .IsInEnum().WithMessage("Invalid user type")
-            .Must(BeValidUserType).WithMessage("User type must be EndUser, Admin, or Partner");
     }
 
     private bool BeValidUserType(UserType userType)
     {
-        return userType == UserType.EndUser || 
-               userType == UserType.Admin || 
+        return userType == UserType.EndUser ||
+               userType == UserType.Admin ||
                userType == UserType.Partner;
     }
 }

@@ -31,28 +31,42 @@ public class LogoutCommandHandler : IRequestHandler<LogoutCommand, bool>
             if (request.LogoutFromAllDevices && !string.IsNullOrEmpty(request.UserId))
             {
                 Guid.TryParse(request.UserId, out Guid userId);
-                // Revoke all refresh tokens for the user
+                
                 await _unitOfWork.RefreshTokensRepository.RevokeAllByUserIdAsync(userId);
-                
-                // Deactivate all user sessions
+
                 await _unitOfWork.UserSessionsRepository.DeactivateAllByUserIdAsync(userId);
-                
+
                 _logger.LogInformation("Logged out from all devices for user: {UserId}", userId);
             }
-            else if (!string.IsNullOrEmpty(request.RefreshToken))
+            else
             {
-                // Revoke specific refresh token
-                var refreshToken = await _unitOfWork.RefreshTokensRepository.GetByTokenAsync(request.RefreshToken);
-                
-                if (refreshToken != null)
+                // Revoke specific refresh token if provided
+                if (!string.IsNullOrEmpty(request.RefreshToken))
                 {
-                    refreshToken.MarkAsRevoked();
-                    _logger.LogInformation("Refresh token revoked for user: {UserId}", refreshToken.UserId);
+                    var refreshToken = await _unitOfWork.RefreshTokensRepository.GetByTokenAsync(request.RefreshToken);
+
+                    if (refreshToken != null)
+                    {
+                        refreshToken.MarkAsRevoked();
+                        _logger.LogInformation("Refresh token revoked for user: {UserId}", refreshToken.UserId);
+                    }
+                }
+
+                // Blacklist access token if provided
+                if (!string.IsNullOrEmpty(request.AccessToken))
+                {
+                    var jwtId = _jwtService.GetJwtIdFromToken(request.AccessToken);
+                    if (!string.IsNullOrEmpty(jwtId))
+                    {
+                        var expiry = _jwtService.GetTokenExpirationDate(request.AccessToken);
+                        await _jwtService.BlacklistTokenAsync(jwtId, expiry);
+                        _logger.LogInformation("Access token blacklisted with JTI: {JwtId}", jwtId);
+                    }
                 }
             }
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-            
+
             _logger.LogInformation("Logout successful");
             return true;
         }
