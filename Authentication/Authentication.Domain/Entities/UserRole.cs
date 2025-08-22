@@ -7,4 +7,5 @@ public class UserRole
 
     public Guid RoleId { get; set; }
     public Role Role { get; set; } = default!;
+    public DateTimeOffset AssignedDate { get; set; } = DateTimeOffset.UtcNow;
 }
