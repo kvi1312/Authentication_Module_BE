@@ -4,14 +4,14 @@ namespace Authentication.Domain.Interfaces;
 
 public interface IUnitOfWork
 {
-    Task<int> CommitAsync(CancellationToken cancellationToken = default);
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();
     Task RollbackTransactionAsync();
 
     IUserRepository UserRepository { get; }
-    IRoleRepository Roles { get; }
-    IRefreshTokenRepository RefreshTokens { get; }
-    IUserSessionRepository UserSessions { get; }
-    IRememberMeTokenRepository RememberMeTokens { get; }
+    IRoleRepository RolesRepository { get; }
+    IRefreshTokenRepository RefreshTokensRepository { get; }
+    IUserSessionRepository UserSessionsRepository { get; }
+    IRememberMeTokenRepository RememberMeTokensRepository { get; }
 }

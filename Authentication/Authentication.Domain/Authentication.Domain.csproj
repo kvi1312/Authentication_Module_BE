@@ -12,13 +12,4 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0-preview.7.25380.108" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Include="Exceptions\AuthenticationException.cs" />
-    <Compile Include="Exceptions\InvalidCredentialsException.cs" />
-    <Compile Include="Exceptions\InvalidUserTypeException.cs" />
-    <Compile Include="Exceptions\TokenExpiredException.cs" />
-    <Compile Include="Exceptions\TokenRevokedException.cs" />
-    <Compile Include="Exceptions\UserInactiveException.cs" />
-  </ItemGroup>
-
 </Project>

@@ -18,7 +18,57 @@ public class RepositoryBase<T> : IRepositoryBase<T> where T : class
     }
 
     public async Task<T> FindAsync(string id) =>  await DbSet.FindAsync(id);
+    public Task<T?> GetByIdAsync(Guid id)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<IEnumerable<T>> GetAllAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate)
+    {
+        throw new NotImplementedException();
+    }
+
     public Task<bool> AnyAsync(Expression<Func<T, bool>> predicate)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<int> CountAsync(Expression<Func<T, bool>> predicate)
+    {
+        throw new NotImplementedException();
+    }
+
+    Task IRepositoryBase<T>.AddAsync(T entity)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task AddRangeAsync(IEnumerable<T> entities)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Update(T entity)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Remove(T entity)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void RemoveRange(IEnumerable<T> entities)
     {
         throw new NotImplementedException();
     }

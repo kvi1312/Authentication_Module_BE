@@ -1,4 +1,4 @@
-namespace Authentication.Application.Common.Models;
+namespace Authentication.Domain.Configurations;
 
 public class DbSettings
 {
