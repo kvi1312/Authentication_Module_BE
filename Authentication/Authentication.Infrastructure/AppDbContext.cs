@@ -13,7 +13,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ILogger logger
     public DbSet<UserRole> UserRoles { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<RememberMeToken> RememberMeTokens { get; set; }
-    public DbSet<UserSession>  UserSessions { get; set; }
+    public DbSet<UserSession> UserSessions { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -45,6 +45,40 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ILogger logger
             entity.HasOne(ur => ur.Role)
                   .WithMany(r => r.UserRoles)
                   .HasForeignKey(ur => ur.RoleId);
+        });
+
+        // RefreshToken
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(rt => rt.Id);
+            entity.HasIndex(rt => rt.Token).IsUnique();
+            entity.HasIndex(rt => rt.JwtId);
+
+            entity.HasOne(rt => rt.User)
+                  .WithMany(u => u.RefreshTokens)
+                  .HasForeignKey(rt => rt.UserId);
+        });
+
+        // RememberMeToken
+        modelBuilder.Entity<RememberMeToken>(entity =>
+        {
+            entity.HasKey(rmt => rmt.Id);
+            entity.HasIndex(rmt => rmt.TokenHash);
+
+            entity.HasOne(rmt => rmt.User)
+                  .WithMany()
+                  .HasForeignKey(rmt => rmt.UserId);
+        });
+
+        // UserSession
+        modelBuilder.Entity<UserSession>(entity =>
+        {
+            entity.HasKey(us => us.Id);
+            entity.HasIndex(us => us.SessionId).IsUnique();
+
+            entity.HasOne(us => us.User)
+                  .WithMany(u => u.UserSessions)
+                  .HasForeignKey(us => us.UserId);
         });
     }
 

@@ -18,8 +18,7 @@ public class MappingProfile : Profile
         CreateMap<Role, RoleDto>();
 
         // Request to Command mappings
-        CreateMap<LoginRequest, LoginCommand>()
-            .ForMember(dest => dest.UserType, opt => opt.Ignore());
+        CreateMap<LoginRequest, LoginCommand>();
 
         CreateMap<RefreshTokenRequest, RefreshTokenCommand>();
 

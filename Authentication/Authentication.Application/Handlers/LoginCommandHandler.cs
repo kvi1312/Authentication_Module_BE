@@ -4,6 +4,7 @@ using Authentication.Application.Dtos.Response;
 using Authentication.Application.Interfaces;
 using Authentication.Application.Strategies;
 using Authentication.Domain.Entities;
+using Authentication.Domain.Enums;
 using Authentication.Domain.Interfaces;
 using AutoMapper;
 using MediatR;
@@ -37,27 +38,39 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
     {
         try
         {
-            _logger.LogInformation("Login attempt for user: {Username} with UserType: {UserType}",
-                request.Username, request.UserType);
+            _logger.LogInformation("Login attempt for user: {Username} (auto-detecting UserType)", request.Username);
 
-            var strategy = _strategyFactory.GetStrategy(request.UserType);
+            // Auto-detect UserType by trying all strategies
+            User? authenticatedUser = null;
+            UserType? detectedUserType = null;
 
-            var user = await strategy.ValidateAsync(request.Username, request.Password, cancellationToken);
-
-            if (user == null)
+            foreach (var strategy in _strategyFactory.GetAllStrategies())
             {
-                _logger.LogWarning("Login failed for user: {Username}", request.Username);
+                var user = await strategy.ValidateAsync(request.Username, request.Password, cancellationToken);
+                if (user != null)
+                {
+                    authenticatedUser = user;
+                    detectedUserType = strategy.UserType;
+                    _logger.LogInformation("User {Username} authenticated as {UserType}",
+                        request.Username, strategy.UserType);
+                    break;
+                }
+            }
+
+            if (authenticatedUser == null)
+            {
+                _logger.LogWarning("Login failed for user: {Username} - Invalid credentials", request.Username);
                 return new LoginResponse
                 {
                     Success = false,
-                    Message = "Invalid credentials or user type mismatch"
+                    Message = "Invalid credentials"
                 };
             }
 
-            user.UpdateLastLogin();
-            var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
+            authenticatedUser.UpdateLastLogin();
+            var roles = authenticatedUser.UserRoles.Select(ur => ur.Role.Name).ToList();
 
-            var accessToken = _jwtService.GenerateAccessToken(user, roles);
+            var accessToken = _jwtService.GenerateAccessToken(authenticatedUser, roles);
             var refreshToken = _jwtService.GenerateRefreshToken();
             var jwtId = _jwtService.GetJwtIdFromToken(accessToken);
 
@@ -74,20 +87,19 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             var refreshTokenEntity = RefreshToken.Create(
                 refreshToken,
                 jwtId,
-                user.Id,
+                authenticatedUser.Id,
                 request.RememberMe ? TimeSpan.FromDays(30) : TimeSpan.FromDays(7)
             );
 
             await _unitOfWork.RefreshTokensRepository.AddAsync(refreshTokenEntity);
 
-            // Create user session if enabled
             string? sessionId = null;
             if (!string.IsNullOrEmpty(request.DeviceInfo))
             {
                 var userSession = UserSession.Create(
-                    user.Id,
+                    authenticatedUser.Id,
                     Guid.NewGuid().ToString(),
-                    TimeSpan.FromHours(24), // Session validity
+                    TimeSpan.FromHours(24),
                     request.DeviceInfo,
                     request.IpAddress
                 );
@@ -98,20 +110,19 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            var userDto = _mapper.Map<UserDto>(user);
+            var userDto = _mapper.Map<UserDto>(authenticatedUser);
             userDto.Roles = roles;
-            userDto.UserType = request.UserType;
+            userDto.UserType = detectedUserType!.Value; // Use auto-detected UserType (guaranteed to be non-null here)
 
-            _logger.LogInformation("Login successful for user: {Username}", request.Username);
+            _logger.LogInformation("Login successful for user: {Username} as {UserType}",
+                request.Username, detectedUserType);
 
             return new LoginResponse
             {
                 Success = true,
                 AccessToken = accessToken,
-                RefreshToken = refreshToken,
                 ExpiresAt = refreshTokenEntity.ExpiresAt,
                 User = userDto,
-                SessionId = sessionId,
                 Message = "Login successful"
             };
         }

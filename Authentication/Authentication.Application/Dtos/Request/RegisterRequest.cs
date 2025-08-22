@@ -1,5 +1,3 @@
-using Authentication.Domain.Enums;
-
 namespace Authentication.Application.Dtos.Request;
 
 public class RegisterRequest
@@ -10,5 +8,4 @@ public class RegisterRequest
     public string ConfirmPassword { get; set; } = default!;
     public string FirstName { get; set; } = default!;
     public string LastName { get; set; } = default!;
-    public UserType UserType { get; set; } = UserType.EndUser;
 }

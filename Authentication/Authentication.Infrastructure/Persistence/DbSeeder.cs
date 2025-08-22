@@ -1,3 +1,5 @@
+using Authentication.Application.Interfaces;
+using Authentication.Domain.Constants;
 using Authentication.Domain.Entities;
 using Authentication.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -23,15 +25,18 @@ public class DbSeeder : IHostedService
         {
             using var scope = _serviceProvider.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var passwordService = scope.ServiceProvider.GetRequiredService<IPasswordService>();
+
             if (context.Database.IsNpgsql())
             {
                 _logger.LogInformation("Applying database migrations...");
-                await context.Database.MigrateAsync();
+                await context.Database.MigrateAsync(cancellationToken);
 
-                await CreateRoles(context);
-                await CreateAdminUser(context);
+                await SeedRolesAsync(context, cancellationToken);
+                await SeedDefaultUsersAsync(context, passwordService, cancellationToken);
+                await CleanupExpiredTokensAsync(context, cancellationToken);
 
-                _logger.LogInformation("Seeding Authentication data completed!");
+                _logger.LogInformation("Database seeding completed successfully!");
             }
         }
         catch (Exception ex)
@@ -41,77 +46,174 @@ public class DbSeeder : IHostedService
         }
     }
 
-    private async Task CreateRoles(AppDbContext context)
+    private async Task SeedRolesAsync(AppDbContext context, CancellationToken cancellationToken)
     {
-        if (!context.Roles.Any())
+        _logger.LogInformation("Seeding roles...");
+
+        var existingRoles = await context.Roles.Select(r => r.Name).ToListAsync(cancellationToken);
+
+        var rolesToAdd = new List<Role>();
+
+        foreach (var userType in Enum.GetValues<UserType>())
         {
-            _logger.LogInformation("Creating default roles...");
-
-            await context.Roles.AddRangeAsync(
-                new Role
+            if (DefaultRoles.UserTypeRoles.TryGetValue(userType, out var roles))
+            {
+                foreach (var (roleName, description) in roles)
                 {
-                    Id = Guid.NewGuid(),
-                    Name = "Admin",
-                    Description = "admin",
-                    UserType = UserType.Admin
-                },
-                new Role
-                {
-                    Id = Guid.NewGuid(),
-                    Name = "EndUser",
-                    UserType = UserType.EndUser
-                },
-                new Role
-                {
-                    Id = Guid.NewGuid(),
-                    Name = "Partner",
-                    UserType = UserType.Partner
+                    if (!existingRoles.Contains(roleName))
+                    {
+                        var role = Role.Create(roleName, description, userType);
+                        rolesToAdd.Add(role);
+                        _logger.LogInformation("Will create role: {RoleName} for user type: {UserType}", roleName, userType);
+                    }
                 }
-            );
+            }
+        }
 
-            await context.SaveChangesAsync();
-            _logger.LogInformation("Roles created successfully");
+        if (rolesToAdd.Any())
+        {
+            await context.Roles.AddRangeAsync(rolesToAdd, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("Successfully created {Count} roles", rolesToAdd.Count);
+        }
+        else
+        {
+            _logger.LogInformation("All roles already exist, skipping role seeding");
         }
     }
 
-    private async Task CreateAdminUser(AppDbContext context)
+    private async Task SeedDefaultUsersAsync(AppDbContext context, IPasswordService passwordService, CancellationToken cancellationToken)
     {
-        if (!context.Users.Any(u => u.Username == "admin"))
+        _logger.LogInformation("Seeding default users...");
+
+        // Create Super Admin
+        await CreateUserIfNotExists(context, passwordService, new UserSeedData
         {
-            _logger.LogInformation("Creating admin user...");
+            Username = "admin",
+            Email = "admin@authmodule.com",
+            Password = "Admin@123",
+            FirstName = "System",
+            LastName = "Administrator",
+            RoleName = AuthenticationConstants.Roles.SuperAdmin,
+            UserType = UserType.Admin
+        }, cancellationToken);
 
-            var adminRole = await context.Roles.FirstOrDefaultAsync(r => r.Name == "Admin");
-            if (adminRole == null)
+        // Create default EndUser
+        await CreateUserIfNotExists(context, passwordService, new UserSeedData
+        {
+            Username = "user",
+            Email = "user@authmodule.com",
+            Password = "User@123",
+            FirstName = "Test",
+            LastName = "User",
+            RoleName = AuthenticationConstants.Roles.EndUser,
+            UserType = UserType.EndUser
+        }, cancellationToken);
+
+        // Create default Partner
+        await CreateUserIfNotExists(context, passwordService, new UserSeedData
+        {
+            Username = "partner",
+            Email = "partner@authmodule.com",
+            Password = "Partner@123",
+            FirstName = "Test",
+            LastName = "Partner",
+            RoleName = AuthenticationConstants.Roles.Partner,
+            UserType = UserType.Partner
+        }, cancellationToken);
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task CreateUserIfNotExists(AppDbContext context, IPasswordService passwordService, UserSeedData userData, CancellationToken cancellationToken)
+    {
+        var existingUser = await context.Users.FirstOrDefaultAsync(u => u.Username == userData.Username, cancellationToken);
+
+        if (existingUser == null)
+        {
+            _logger.LogInformation("Creating user: {Username}", userData.Username);
+
+            var passwordHash = passwordService.HashPassword(userData.Password);
+            var user = User.Create(userData.Username, userData.Email, passwordHash, userData.FirstName, userData.LastName);
+
+            await context.Users.AddAsync(user, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+
+            var role = await context.Roles.FirstOrDefaultAsync(r => r.Name == userData.RoleName, cancellationToken);
+            if (role != null)
             {
-                _logger.LogError("Admin role not found, cannot create admin user");
-                return;
+                var userRole = new UserRole
+                {
+                    UserId = user.Id,
+                    RoleId = role.Id,
+                    AssignedDate = DateTimeOffset.UtcNow
+                };
+                await context.UserRoles.AddAsync(userRole, cancellationToken);
+
+                _logger.LogInformation("Created user: {Username} with role: {RoleName}, Password: {Password}",
+                    userData.Username, userData.RoleName, userData.Password);
             }
-
-            var adminUser = new User
+            else
             {
-                Id = Guid.NewGuid(),
-                Username = "admin",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("a2601197!", 12),
-                Email = "admin@gmail.com",
-                FirstName = "System",
-                LastName = "Administrator",
-                IsActive = true,
-            };
-
-            await context.Users.AddAsync(adminUser);
-            await context.SaveChangesAsync();
-
-            var userRole = new UserRole
-            {
-                UserId = adminUser.Id,
-                RoleId = adminRole.Id
-            };
-
-            await context.UserRoles.AddAsync(userRole);
-            await context.SaveChangesAsync();
-
-            _logger.LogInformation("Admin user created successfully - Username: {Username}", adminUser.Username);
+                _logger.LogWarning("Role {RoleName} not found for user {Username}", userData.RoleName, userData.Username);
+            }
         }
+        else
+        {
+            _logger.LogInformation("User {Username} already exists, skipping creation", userData.Username);
+        }
+    }
+
+    private async Task CleanupExpiredTokensAsync(AppDbContext context, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Cleaning up expired tokens...");
+
+        // Cleanup expired refresh tokens
+        var expiredRefreshTokens = await context.RefreshTokens
+            .Where(rt => rt.ExpiresAt <= DateTime.UtcNow)
+            .ToListAsync(cancellationToken);
+
+        if (expiredRefreshTokens.Any())
+        {
+            context.RefreshTokens.RemoveRange(expiredRefreshTokens);
+            _logger.LogInformation("Removed {Count} expired refresh tokens", expiredRefreshTokens.Count);
+        }
+
+        // Cleanup expired remember me tokens
+        var expiredRememberMeTokens = await context.RememberMeTokens
+            .Where(rmt => rmt.ExpiresAt <= DateTime.UtcNow)
+            .ToListAsync(cancellationToken);
+
+        if (expiredRememberMeTokens.Any())
+        {
+            context.RememberMeTokens.RemoveRange(expiredRememberMeTokens);
+            _logger.LogInformation("Removed {Count} expired remember me tokens", expiredRememberMeTokens.Count);
+        }
+
+        // Cleanup expired user sessions
+        var expiredSessions = await context.UserSessions
+            .Where(us => us.ExpiresAt <= DateTime.UtcNow)
+            .ToListAsync(cancellationToken);
+
+        if (expiredSessions.Any())
+        {
+            context.UserSessions.RemoveRange(expiredSessions);
+            _logger.LogInformation("Removed {Count} expired user sessions", expiredSessions.Count);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Token cleanup completed");
+    }
+
+    private class UserSeedData
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string RoleName { get; set; } = string.Empty;
+        public UserType UserType { get; set; }
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

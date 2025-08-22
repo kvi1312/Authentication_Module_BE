@@ -20,14 +20,25 @@ public static class ConfigureServices
         services.AddScoped<DbFactory>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped(typeof(IRepositoryBase<>), typeof(RepositoryBase<>));
+
+        // Register repositories
         services.AddScoped<IUserRepository, UserRepository>();
-        // services.AddScoped<IAuthenticationStrategy, EndUserAuthenticationStrategy>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IUserSessionRepository, UserSessionRepository>();
+        services.AddScoped<IRememberMeTokenRepository, RememberMeTokenRepository>();
+
+        // Register authentication strategies
         services.AddScoped<IAuthenticationStrategy, AdminAuthenticationStrategy>();
         services.AddScoped<IAuthenticationStrategy, PartnerAuthenticationStrategy>();
+        services.AddScoped<IAuthenticationStrategy, EndUserAuthenticationStrategy>();
         services.AddScoped<IAuthenticationStrategyFactory, AuthenticationStrategyFactory>();
+
+        // Register services
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IPasswordService, PasswordService>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();
+        services.AddScoped<ITokenConfigService, TokenConfigService>();
         return services;
     }
 

@@ -4,6 +4,7 @@ using Authentication.Application.Dtos.Response;
 using Authentication.Application.Interfaces;
 using Authentication.Domain.Constants;
 using Authentication.Domain.Entities;
+using Authentication.Domain.Enums;
 using Authentication.Domain.Interfaces;
 using AutoMapper;
 using MediatR;
@@ -11,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Authentication.Application.Handlers;
 
-public class RegisterCommandHandler : IRequestHandler<RegisterCommand, LoginResponse>
+public class RegisterCommandHandler : IRequestHandler<RegisterCommand, RegisterResponse>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordService _passwordService;
@@ -33,21 +34,21 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, LoginResp
         _logger = logger;
     }
 
-    public async Task<LoginResponse> Handle(RegisterCommand request, CancellationToken cancellationToken)
+    public async Task<RegisterResponse> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
         try
         {
             _logger.LogInformation("Registration attempt for user: {Username}", request.Username);
 
             var existingUser = await _unitOfWork.UserRepository.ExistsAsync(request.Username, request.Email);
-            
+
             if (existingUser)
             {
                 _logger.LogWarning("Username or email already exists: {Username}, {Email}", request.Username, request.Email);
-                return new LoginResponse 
-                { 
-                    Success = false, 
-                    Message = "Username or email already exists" 
+                return new RegisterResponse
+                {
+                    Success = false,
+                    Message = "Username or email already exists"
                 };
             }
 
@@ -62,16 +63,18 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, LoginResp
             );
 
             await _unitOfWork.UserRepository.AddAsync(user);
-            var defaultRoleName = GetDefaultRoleForUserType(request.UserType);
+
+            // Public registration always creates EndUser
+            var defaultRoleName = GetDefaultRoleForUserType(UserType.EndUser);
             var role = await _unitOfWork.RolesRepository.GetByNameAsync(defaultRoleName);
-            
+
             if (role == null)
             {
                 _logger.LogError("Default role not found: {RoleName}", defaultRoleName);
-                return new LoginResponse 
-                { 
-                    Success = false, 
-                    Message = "Registration failed - default role not configured" 
+                return new RegisterResponse
+                {
+                    Success = false,
+                    Message = "Registration failed - default role not configured"
                 };
             }
 
@@ -87,73 +90,26 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, LoginResp
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            // Generate tokens for immediate login
-            var roles = new List<string> { role.Name };
-            var accessToken = _jwtService.GenerateAccessToken(user, roles);
-            var refreshToken = _jwtService.GenerateRefreshToken();
-            var jwtId = _jwtService.GetJwtIdFromToken(accessToken);
+            var userDto = _mapper.Map<UserDto>(user);
+            userDto.Roles = new List<string> { role.Name };
+            userDto.UserType = UserType.EndUser; // Public registration always creates EndUser
 
-            if (!string.IsNullOrEmpty(jwtId))
-            {
-                var refreshTokenEntity = RefreshToken.Create(
-                    refreshToken,
-                    jwtId,
-                    user.Id,
-                    TimeSpan.FromDays(7)
-                );
+            _logger.LogInformation("Registration successful for user: {Username} as EndUser", request.Username);
 
-                await _unitOfWork.RefreshTokensRepository.AddAsync(refreshTokenEntity);
-
-                // Create user session if device info provided
-                string? sessionId = null;
-                if (!string.IsNullOrEmpty(request.DeviceInfo))
-                {
-                    var userSession = UserSession.Create(
-                        user.Id,
-                        Guid.NewGuid().ToString(),
-                        TimeSpan.FromHours(24),
-                        request.DeviceInfo,
-                        request.IpAddress
-                    );
-                    
-                    await _unitOfWork.UserSessionsRepository.AddAsync(userSession);
-                    sessionId = userSession.SessionId;
-                }
-
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-                var userDto = _mapper.Map<UserDto>(user);
-                userDto.Roles = roles;
-                userDto.UserType = request.UserType;
-
-                _logger.LogInformation("Registration and auto-login successful for user: {Username}", request.Username);
-
-                return new LoginResponse
-                {
-                    Success = true,
-                    AccessToken = accessToken,
-                    RefreshToken = refreshToken,
-                    ExpiresAt = refreshTokenEntity.ExpiresAt,
-                    User = userDto,
-                    SessionId = sessionId,
-                    Message = "Registration successful"
-                };
-            }
-
-            _logger.LogInformation("Registration successful for user: {Username}", request.Username);
-            return new LoginResponse
+            return new RegisterResponse
             {
                 Success = true,
-                Message = "Registration successful. Please login."
+                Message = "Registration successful. You can now login.",
+                User = userDto
             };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred during registration for user {Username}", request.Username);
-            return new LoginResponse 
-            { 
-                Success = false, 
-                Message = "An error occurred during registration" 
+            return new RegisterResponse
+            {
+                Success = false,
+                Message = "An error occurred during registration"
             };
         }
     }

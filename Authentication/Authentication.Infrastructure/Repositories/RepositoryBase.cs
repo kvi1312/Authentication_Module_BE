@@ -8,76 +8,66 @@ namespace Authentication.Infrastructure.Repositories;
 public class RepositoryBase<T> : IRepositoryBase<T> where T : class
 {
     private readonly DbFactory _dbFactory;
-    private DbSet<T> _dbSet;
-    protected DbSet<T> DbSet => _dbSet ?? _dbFactory.DbContext.Set<T>();
-
+    private DbSet<T>? _dbSet;
+    protected DbSet<T> DbSet => _dbSet ??= _dbFactory.DbContext.Set<T>();
 
     public RepositoryBase(DbFactory dbFactory)
     {
         _dbFactory = dbFactory;
     }
 
-    public async Task<T> FindAsync(string id) =>  await DbSet.FindAsync(id);
-    public Task<T?> GetByIdAsync(Guid id)
+    public async Task<T?> GetByIdAsync(Guid id)
     {
-        throw new NotImplementedException();
+        return await DbSet.FindAsync(id);
     }
 
-    public Task<IEnumerable<T>> GetAllAsync()
+    public async Task<IEnumerable<T>> GetAllAsync()
     {
-        throw new NotImplementedException();
+        return await DbSet.ToListAsync();
     }
 
-    public Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+    public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
     {
-        throw new NotImplementedException();
+        return await DbSet.Where(predicate).ToListAsync();
     }
 
-    public Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate)
+    public async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate)
     {
-        throw new NotImplementedException();
+        return await DbSet.FirstOrDefaultAsync(predicate);
     }
 
-    public Task<bool> AnyAsync(Expression<Func<T, bool>> predicate)
+    public async Task<bool> AnyAsync(Expression<Func<T, bool>> predicate)
     {
-        throw new NotImplementedException();
+        return await DbSet.AnyAsync(predicate);
     }
 
-    public Task<int> CountAsync(Expression<Func<T, bool>> predicate)
+    public async Task<int> CountAsync(Expression<Func<T, bool>> predicate)
     {
-        throw new NotImplementedException();
+        return await DbSet.CountAsync(predicate);
     }
 
-    Task IRepositoryBase<T>.AddAsync(T entity)
+    public async Task AddAsync(T entity)
     {
-        throw new NotImplementedException();
+        await DbSet.AddAsync(entity);
     }
 
-    public Task AddRangeAsync(IEnumerable<T> entities)
+    public async Task AddRangeAsync(IEnumerable<T> entities)
     {
-        throw new NotImplementedException();
+        await DbSet.AddRangeAsync(entities);
     }
 
     public void Update(T entity)
     {
-        throw new NotImplementedException();
+        DbSet.Update(entity);
     }
 
     public void Remove(T entity)
     {
-        throw new NotImplementedException();
+        DbSet.Remove(entity);
     }
 
     public void RemoveRange(IEnumerable<T> entities)
     {
-        throw new NotImplementedException();
+        DbSet.RemoveRange(entities);
     }
-
-    public void AddAsync(T entity) => DbSet.AddAsync(entity);
-
-    public void DeleteAsync(T entity) => DbSet.Remove(entity);
-
-    public void UpdateAsync(T entity) => DbSet.Update(entity);
-
-    public void Find(string id) => DbSet.Find(id);
 }
