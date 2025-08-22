@@ -1,4 +1,5 @@
 using Authentication.Domain.Entities;
+using Authentication.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -51,17 +52,20 @@ public class DbSeeder : IHostedService
                 {
                     Id = Guid.NewGuid(),
                     Name = "Admin",
-                    Description = "admin"
+                    Description = "admin",
+                    UserType = UserType.Admin
                 },
                 new Role
                 {
                     Id = Guid.NewGuid(),
-                    Name = "User",
+                    Name = "EndUser",
+                    UserType = UserType.EndUser
                 },
                 new Role
                 {
                     Id = Guid.NewGuid(),
-                    Name = "Manager",
+                    Name = "Partner",
+                    UserType = UserType.Partner
                 }
             );
 

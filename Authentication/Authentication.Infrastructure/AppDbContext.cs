@@ -11,7 +11,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ILogger logger
     public DbSet<User> Users { get; set; }
     public DbSet<Role> Roles { get; set; }
     public DbSet<UserRole> UserRoles { get; set; }
-
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<RememberMeToken> RememberMeTokens { get; set; }
+    public DbSet<UserSession>  UserSessions { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

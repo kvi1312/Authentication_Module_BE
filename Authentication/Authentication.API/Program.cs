@@ -20,7 +20,7 @@ builder.Services.AddCarter();
 builder.Services.AddConfigurationSettings(builder.Configuration);
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddHostedService<DbSeeder>();
-
+builder.Services.ConfigAuthentication(builder.Configuration);
 var app = builder.Build();
 app.MigrateDataBase<AppDbContext>();
 try
@@ -34,9 +34,8 @@ try
     }
 
     app.UseHttpsRedirection();
-
+    app.UseAuthentication();
     app.UseAuthorization();
-
     app.MapControllers();
 
     app.Run();

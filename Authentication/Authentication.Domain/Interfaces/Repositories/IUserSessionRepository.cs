@@ -2,7 +2,7 @@
 
 namespace Authentication.Domain.Interfaces.Repositories;
 
-public interface IUserSessionRepository
+public interface IUserSessionRepository : IRepositoryBase<UserSession>
 {
     Task<UserSession?> GetBySessionIdAsync(string sessionId);
     Task<IEnumerable<UserSession>> GetActiveByUserIdAsync(Guid userId);

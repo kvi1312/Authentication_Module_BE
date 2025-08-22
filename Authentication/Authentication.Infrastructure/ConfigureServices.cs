@@ -1,7 +1,10 @@
-﻿using Authentication.Application.Common.Models;
+﻿using Authentication.Application.Interfaces;
+using Authentication.Application.Strategies;
+using Authentication.Domain.Configurations;
 using Authentication.Domain.Interfaces;
 using Authentication.Domain.Interfaces.Repositories;
 using Authentication.Infrastructure.Repositories;
+using Authentication.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,7 +21,13 @@ public static class ConfigureServices
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped(typeof(IRepositoryBase<>), typeof(RepositoryBase<>));
         services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IUserServices, UserServices>();
+        // services.AddScoped<IAuthenticationStrategy, EndUserAuthenticationStrategy>();
+        services.AddScoped<IAuthenticationStrategy, AdminAuthenticationStrategy>();
+        services.AddScoped<IAuthenticationStrategy, PartnerAuthenticationStrategy>();
+        services.AddScoped<IAuthenticationStrategyFactory, AuthenticationStrategyFactory>();
+        services.AddScoped<IJwtService, JwtService>();
+        services.AddScoped<IPasswordService, PasswordService>();
+        services.AddScoped<IAuthenticationService, AuthenticationService>();
         return services;
     }
 

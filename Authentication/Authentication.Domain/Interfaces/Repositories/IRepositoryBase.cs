@@ -4,10 +4,15 @@ namespace Authentication.Domain.Interfaces.Repositories;
 
 public interface IRepositoryBase<T> where T : class
 {
-    Task<T> FindAsync(string id);
+    Task<T?> GetByIdAsync(Guid id);
+    Task<IEnumerable<T>> GetAllAsync();
+    Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
+    Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate);
     Task<bool> AnyAsync(Expression<Func<T, bool>> predicate);
-    void Find (string id);
-    void AddAsync(T entity);
-    void DeleteAsync(T entity);
-    void UpdateAsync(T entity);
+    Task<int> CountAsync(Expression<Func<T, bool>> predicate);
+    Task AddAsync(T entity);
+    Task AddRangeAsync(IEnumerable<T> entities);
+    void Update(T entity);
+    void Remove(T entity);
+    void RemoveRange(IEnumerable<T> entities);
 }
