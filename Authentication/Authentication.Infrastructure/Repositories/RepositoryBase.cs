@@ -1,6 +1,7 @@
 ﻿using Authentication.Domain.Interfaces.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 
 namespace Authentication.Infrastructure.Repositories;
 
@@ -17,6 +18,10 @@ public class RepositoryBase<T> : IRepositoryBase<T> where T : class
     }
 
     public async Task<T> FindAsync(string id) =>  await DbSet.FindAsync(id);
+    public Task<bool> AnyAsync(Expression<Func<T, bool>> predicate)
+    {
+        throw new NotImplementedException();
+    }
 
     public void AddAsync(T entity) => DbSet.AddAsync(entity);
 

@@ -51,6 +51,7 @@ public class DbSeeder : IHostedService
                 {
                     Id = Guid.NewGuid(),
                     Name = "Admin",
+                    Description = "admin"
                 },
                 new Role
                 {
@@ -86,7 +87,7 @@ public class DbSeeder : IHostedService
             {
                 Id = Guid.NewGuid(),
                 Username = "admin",
-                Password = BCrypt.Net.BCrypt.HashPassword("a2601197!", 12),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("a2601197!", 12),
                 Email = "admin@gmail.com",
                 FirstName = "System",
                 LastName = "Administrator",

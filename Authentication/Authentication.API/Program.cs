@@ -20,7 +20,9 @@ builder.Services.AddCarter();
 builder.Services.AddConfigurationSettings(builder.Configuration);
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddHostedService<DbSeeder>();
+
 var app = builder.Build();
+app.MigrateDataBase<AppDbContext>();
 try
 {
     // Configure the HTTP request pipeline.
