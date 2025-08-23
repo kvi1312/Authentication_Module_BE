@@ -105,7 +105,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ILogger logger
                     if (item.Entity is IDateTracking modifiedEntity)
                     {
                         modifiedEntity.LastModifiedDate = DateTime.UtcNow;
-                        item.State = EntityState.Added;
+                        item.State = EntityState.Modified;
                     }
                     break;
                 default:

@@ -36,40 +36,59 @@ public class AuthController : ControllerBase
 
         if (!result.Success) return BadRequest(result);
 
-        // Set secure cookies for remember me functionality
-        if (request.RememberMe && !string.IsNullOrEmpty(result.RefreshToken))
+        if (!string.IsNullOrEmpty(result.RefreshToken))
         {
-            var cookieOptions = new CookieOptions
+            // Normal Login : No Expires = Session cookie (deleted when browser closes)
+            var refreshCookieOptions = new CookieOptions
             {
                 HttpOnly = true,
                 Secure = false,
                 SameSite = SameSiteMode.Strict,
-                Expires = DateTimeOffset.UtcNow.AddDays(30),
                 Path = "/"
             };
 
-            Response.Cookies.Append("refreshToken", result.RefreshToken, cookieOptions);
-
-
-            if (!string.IsNullOrEmpty(result.RememberMeToken))
+            // KEY DIFFERENCE: Normal login = Session cookie, Remember Me = Persistent cookie
+            if (request.RememberMe)
             {
-                Response.Cookies.Append("rememberMe", result.RememberMeToken, cookieOptions);
+                refreshCookieOptions.Expires = result.RefreshTokenExpiresAt;
             }
+
+            Response.Cookies.Append("refreshToken", result.RefreshToken, refreshCookieOptions);
+        }
+
+        // Set remember me token if requested
+        if (request.RememberMe && !string.IsNullOrEmpty(result.RememberMeToken))
+        {
+            var rememberMeCookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Strict,
+                Expires = result.RememberMeTokenExpiresAt,
+                Path = "/"
+            };
+
+            Response.Cookies.Append("rememberMe", result.RememberMeToken, rememberMeCookieOptions);
         }
 
         var safeResult = new LoginResponse
         {
             Success = result.Success,
             Message = result.Message,
-            AccessToken = result.AccessToken,
-            ExpiresAt = result.ExpiresAt,
-            User = result.User
+            AccessToken = result.AccessToken, // Still need for Authorization header
+            RefreshToken = null, // Don't expose in response body
+            RememberMeToken = null, // Don't expose in response body
+            AccessTokenExpiresAt = result.AccessTokenExpiresAt,
+            RefreshTokenExpiresAt = result.RefreshTokenExpiresAt,
+            RememberMeTokenExpiresAt = result.RememberMeTokenExpiresAt,
+            User = result.User,
+            SessionId = result.SessionId
         };
 
         return Ok(safeResult);
     }
 
-    [HttpPost("refresh")]
+    [HttpPost("refresh-token")] // Add alias for frontend compatibility
     public async Task<ActionResult<RefreshTokenResponse>> RefreshToken([FromBody] RefreshTokenRequest? request = null)
     {
         string? refreshToken = request?.RefreshToken;
@@ -79,9 +98,15 @@ public class AuthController : ControllerBase
             refreshToken = Request.Cookies["refreshToken"];
         }
 
+        // If no refresh token, try remember me token as fallback
         if (string.IsNullOrEmpty(refreshToken))
         {
-            return BadRequest(new { message = "Refresh token is required" });
+            refreshToken = Request.Cookies["rememberMe"];
+        }
+
+        if (string.IsNullOrEmpty(refreshToken))
+        {
+            return BadRequest(new { message = "Refresh token or remember me token is required" });
         }
 
         var command = new RefreshTokenCommand
@@ -100,14 +125,32 @@ public class AuthController : ControllerBase
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.Strict,
-                Expires = result.ExpiresAt,
                 Path = "/"
             };
+
+            // Maintain original cookie behavior: session vs persistent
+            if (result.IsRememberMe)
+            {
+                cookieOptions.Expires = result.RefreshTokenExpiresAt;
+            }
+            // No Expires = Session cookie for non-RememberMe
 
             Response.Cookies.Append("refreshToken", result.RefreshToken, cookieOptions);
         }
 
-        return result.Success ? Ok(result) : BadRequest(result);
+        // Don't expose refresh token in response body when using cookies
+        var safeResult = new RefreshTokenResponse
+        {
+            Success = result.Success,
+            Message = result.Message,
+            AccessToken = result.AccessToken, // Still need for Authorization header
+            RefreshToken = null, // Don't expose in response body
+            AccessTokenExpiresAt = result.AccessTokenExpiresAt,
+            RefreshTokenExpiresAt = result.RefreshTokenExpiresAt,
+            IsRememberMe = result.IsRememberMe
+        };
+
+        return result.Success ? Ok(safeResult) : BadRequest(result);
     }
 
     [HttpPost("logout")]

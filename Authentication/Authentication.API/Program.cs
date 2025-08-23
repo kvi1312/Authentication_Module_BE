@@ -32,8 +32,7 @@ builder.Services.AddCors(options =>
 builder.Host.AddAppConfigurations();
 builder.Services.AddCarter();
 
-// Add MediatR
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Authentication.Application.Handlers.LoginCommandHandler).Assembly));
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Authentication.Application.Commands.LoginCommand).Assembly));
 
 builder.Services.AddConfigurationSettings(builder.Configuration);
 builder.Services.AddInfrastructureServices(builder.Configuration);

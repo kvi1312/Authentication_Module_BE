@@ -9,6 +9,7 @@ using Authentication.Domain.Interfaces;
 using AutoMapper;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using System.Security.Cryptography;
 
 namespace Authentication.Application.Handlers;
 
@@ -17,6 +18,8 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
     private readonly IUnitOfWork _unitOfWork;
     private readonly IJwtService _jwtService;
     private readonly IAuthenticationStrategyFactory _strategyFactory;
+    private readonly ITokenConfigService _tokenConfigService;
+    private readonly IPasswordService _passwordService;
     private readonly IMapper _mapper;
     private readonly ILogger<LoginCommandHandler> _logger;
 
@@ -24,12 +27,17 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         IUnitOfWork unitOfWork,
         IJwtService jwtService,
         IAuthenticationStrategyFactory strategyFactory,
+        ITokenConfigService tokenConfigService,
+        IPasswordService passwordService,
         IMapper mapper,
         ILogger<LoginCommandHandler> logger)
     {
         _unitOfWork = unitOfWork;
         _jwtService = jwtService;
         _strategyFactory = strategyFactory;
+        _tokenConfigService = tokenConfigService;
+        _passwordService = passwordService;
+        _tokenConfigService = tokenConfigService;
         _mapper = mapper;
         _logger = logger;
     }
@@ -40,7 +48,6 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         {
             _logger.LogInformation("Login attempt for user: {Username} (auto-detecting UserType)", request.Username);
 
-            // Auto-detect UserType by trying all strategies
             User? authenticatedUser = null;
             UserType? detectedUserType = null;
 
@@ -88,10 +95,33 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
                 refreshToken,
                 jwtId,
                 authenticatedUser.Id,
-                request.RememberMe ? TimeSpan.FromDays(30) : TimeSpan.FromDays(7)
+                GetRefreshTokenExpiry(false) // Always use standard refresh token duration
             );
 
+            _logger.LogInformation("Creating refresh token for user {UserId}, Token: {Token}, ExpiresAt: {ExpiresAt}",
+                authenticatedUser.Id, refreshToken, refreshTokenEntity.ExpiresAt);
+
             await _unitOfWork.RefreshTokensRepository.AddAsync(refreshTokenEntity);
+
+            // Create RememberMeToken if requested
+            string? rememberMeToken = null;
+            if (request.RememberMe)
+            {
+                rememberMeToken = GenerateRememberMeToken();
+                var rememberMeTokenHash = _passwordService.HashPassword(rememberMeToken);
+                var rememberMeEntity = RememberMeToken.Create(
+                    authenticatedUser.Id,
+                    rememberMeTokenHash,
+                    GetRememberMeTokenExpiry()
+                );
+
+                _logger.LogInformation("Creating remember me token for user {UserId}, ExpiresAt: {ExpiresAt}",
+                    authenticatedUser.Id, rememberMeEntity.ExpiresAt);
+
+                await _unitOfWork.RememberMeTokensRepository.AddAsync(rememberMeEntity);
+            }
+
+            _logger.LogInformation("Refresh token added to repository, saving changes...");
 
             string? sessionId = null;
             if (!string.IsNullOrEmpty(request.DeviceInfo))
@@ -110,9 +140,11 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+            _logger.LogInformation("Database changes saved successfully. Refresh token should now be in database.");
+
             var userDto = _mapper.Map<UserDto>(authenticatedUser);
             userDto.Roles = roles;
-            userDto.UserType = detectedUserType!.Value; // Use auto-detected UserType (guaranteed to be non-null here)
+            userDto.UserType = detectedUserType!.Value;
 
             _logger.LogInformation("Login successful for user: {Username} as {UserType}",
                 request.Username, detectedUserType);
@@ -121,8 +153,15 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             {
                 Success = true,
                 AccessToken = accessToken,
-                ExpiresAt = refreshTokenEntity.ExpiresAt,
+                RefreshToken = refreshToken,
+                RememberMeToken = rememberMeToken,
+
+                AccessTokenExpiresAt = _jwtService.GetAccessTokenExpiryTime(),
+                RefreshTokenExpiresAt = refreshTokenEntity.ExpiresAt,
+                RememberMeTokenExpiresAt = request.RememberMe ? DateTime.UtcNow.Add(GetRememberMeTokenExpiry()) : null,
+
                 User = userDto,
+                SessionId = sessionId,
                 Message = "Login successful"
             };
         }
@@ -135,5 +174,33 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
                 Message = "An error occurred during login"
             };
         }
+    }
+
+    private TimeSpan GetRefreshTokenExpiry(bool rememberMe)
+    {
+        var config = _tokenConfigService.GetCurrentConfig();
+
+        if (rememberMe)
+        {
+            return TimeSpan.FromDays(config.RememberMeTokenExpiryDays);
+        }
+        else
+        {
+            return TimeSpan.FromDays(config.RefreshTokenExpiryDays);
+        }
+    }
+
+    private TimeSpan GetRememberMeTokenExpiry()
+    {
+        var config = _tokenConfigService.GetCurrentConfig();
+        return TimeSpan.FromDays(config.RememberMeTokenExpiryDays);
+    }
+
+    private string GenerateRememberMeToken()
+    {
+        var randomBytes = new byte[64];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        return Convert.ToBase64String(randomBytes);
     }
 }

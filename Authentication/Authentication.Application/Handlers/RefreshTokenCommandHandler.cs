@@ -12,15 +12,18 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IJwtService _jwtService;
+    private readonly ITokenConfigService _tokenConfigService;
     private readonly ILogger<RefreshTokenCommandHandler> _logger;
 
     public RefreshTokenCommandHandler(
         IUnitOfWork unitOfWork,
         IJwtService jwtService,
+        ITokenConfigService tokenConfigService,
         ILogger<RefreshTokenCommandHandler> logger)
     {
         _unitOfWork = unitOfWork;
         _jwtService = jwtService;
+        _tokenConfigService = tokenConfigService;
         _logger = logger;
     }
 
@@ -74,12 +77,19 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
             }
 
             // Create new refresh token entity
+            var config = _tokenConfigService.GetCurrentConfig();
+            var originalDuration = storedRefreshToken.ExpiresAt - storedRefreshToken.CreatedDate;
+            var isRememberMe = originalDuration.TotalDays > config.RefreshTokenExpiryDays;
+
             var newRefreshTokenEntity = RefreshToken.Create(
                 newRefreshToken,
                 jwtId,
                 user.Id,
-                TimeSpan.FromDays(7)
+                GetRefreshTokenExpiry(isRememberMe)
             );
+
+            _logger.LogInformation("Creating new refresh token with RememberMe: {IsRememberMe}, Duration: {Duration} days",
+                isRememberMe, GetRefreshTokenExpiry(isRememberMe).TotalDays);
 
             await _unitOfWork.RefreshTokensRepository.AddAsync(newRefreshTokenEntity);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -91,7 +101,9 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
                 Success = true,
                 AccessToken = newAccessToken,
                 RefreshToken = newRefreshToken,
-                ExpiresAt = newRefreshTokenEntity.ExpiresAt,
+                AccessTokenExpiresAt = _jwtService.GetAccessTokenExpiryTime(),
+                RefreshTokenExpiresAt = newRefreshTokenEntity.ExpiresAt,
+                IsRememberMe = isRememberMe,
                 Message = "Token refreshed successfully"
             };
         }
@@ -104,5 +116,17 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
                 Message = "An error occurred during token refresh"
             };
         }
+    }
+
+    private TimeSpan GetRefreshTokenExpiry(bool rememberMe)
+    {
+        var config = _tokenConfigService.GetCurrentConfig();
+
+        if (rememberMe)
+        {
+            return TimeSpan.FromDays(config.RememberMeTokenExpiryDays);
+        }
+
+        return TimeSpan.FromDays(config.RefreshTokenExpiryDays);
     }
 }

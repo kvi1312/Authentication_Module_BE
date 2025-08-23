@@ -144,6 +144,12 @@ public class JwtService : IJwtService
         return Task.CompletedTask;
     }
 
+    public DateTime GetAccessTokenExpiryTime()
+    {
+        var settings = GetCurrentSettings();
+        return DateTime.UtcNow.AddMinutes(settings.ExpiryMinutes);
+    }
+
     private JwtSecurityToken GetToken(string token)
     {
         var tokenHandler = new JwtSecurityTokenHandler();

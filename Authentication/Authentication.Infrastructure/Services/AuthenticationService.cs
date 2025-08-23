@@ -130,7 +130,8 @@ public class AuthenticationService : IAuthenticationService
                 Success = true,
                 Message = "Login successful",
                 AccessToken = accessToken,
-                ExpiresAt = DateTime.UtcNow.Add(settings.GetAccessTokenExpiry()),
+                AccessTokenExpiresAt = DateTime.UtcNow.Add(settings.GetAccessTokenExpiry()),
+                RefreshTokenExpiresAt = DateTime.UtcNow.Add(settings.GetRefreshTokenExpiry()),
                 User = userDto
             };
         }
@@ -229,7 +230,8 @@ public class AuthenticationService : IAuthenticationService
                 Success = true,
                 AccessToken = newAccessToken,
                 RefreshToken = newRefreshToken,
-                ExpiresAt = newRefreshTokenEntity.ExpiresAt,
+                AccessTokenExpiresAt = DateTime.UtcNow.Add(settings.GetAccessTokenExpiry()),
+                RefreshTokenExpiresAt = newRefreshTokenEntity.ExpiresAt,
                 Message = "Token refreshed successfully"
             };
         }

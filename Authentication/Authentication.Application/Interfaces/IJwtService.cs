@@ -11,6 +11,7 @@ public interface IJwtService
     string? GetJwtIdFromToken(string token);
     bool IsTokenExpired(string token);
     DateTime GetTokenExpirationDate(string token);
+    DateTime GetAccessTokenExpiryTime();
     Task<bool> IsTokenBlacklistedAsync(string jti);
     Task BlacklistTokenAsync(string jti, DateTime expiry);
 }
