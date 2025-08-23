@@ -14,7 +14,7 @@ public static class HostExtensions
         });
     }
 
-    public static IHost MigrateDataBase<TContext>(this IHost host) where TContext : DbContext // where : stand for check only context is extended from dbcontext that can using this service
+    public static IHost MigrateDataBase<TContext>(this IHost host) where TContext : DbContext
     {
         using (var scope = host.Services.CreateScope())
         {

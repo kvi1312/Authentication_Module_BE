@@ -1,6 +1,7 @@
 using Authentication.Application.Commands;
 using Authentication.Application.Dtos;
 using Authentication.Application.Dtos.Response;
+using Authentication.Application.Extensions;
 using Authentication.Application.Interfaces;
 using Authentication.Application.Strategies;
 using Authentication.Domain.Entities;
@@ -143,7 +144,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             _logger.LogInformation("Database changes saved successfully. Refresh token should now be in database.");
 
             var userDto = _mapper.Map<UserDto>(authenticatedUser);
-            userDto.Roles = roles;
+            userDto.Roles = roles.ToRoleTypes();
             userDto.UserType = detectedUserType!.Value;
 
             _logger.LogInformation("Login successful for user: {Username} as {UserType}",

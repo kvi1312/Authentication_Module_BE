@@ -5,5 +5,32 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: AuthDb
     ports:
-      - '5433:5432'
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=https://+:7070;http://+:5070
+      - DbSettings__ConnectionString=Host=db;Port=5432;Database=AuthDB;Username=postgres;Password=postgres
+    ports:
+      - "7070:7070"
+      - "5070:5070"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

@@ -7,4 +7,14 @@ public class UserRole
     public Guid RoleId { get; set; }
     public Role Role { get; set; } = default!;
     public DateTimeOffset AssignedDate { get; set; } = DateTimeOffset.UtcNow;
+
+    public static UserRole Create(Guid userId, Guid roleId)
+    {
+        return new UserRole
+        {
+            UserId = userId,
+            RoleId = roleId,
+            AssignedDate = DateTimeOffset.UtcNow
+        };
+    }
 }

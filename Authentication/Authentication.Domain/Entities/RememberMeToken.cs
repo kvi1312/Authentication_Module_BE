@@ -6,7 +6,7 @@ public class RememberMeToken : IDateTracking
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
-    public string TokenHash { get; set; } = default!; // Store hashed version
+    public string TokenHash { get; set; } = default!;
     public DateTime ExpiresAt { get; set; }
     public bool IsUsed { get; set; }
     public DateTimeOffset CreatedDate { get; set; }

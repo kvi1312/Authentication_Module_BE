@@ -5,6 +5,7 @@ using Authentication.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Web;
 
 namespace Authentication.API.Endpoints;
 
@@ -47,13 +48,13 @@ public class AuthController : ControllerBase
                 Path = "/"
             };
 
-            // KEY DIFFERENCE: Normal login = Session cookie, Remember Me = Persistent cookie
+            // Remember Me = Persistent cookie
             if (request.RememberMe)
             {
                 refreshCookieOptions.Expires = result.RefreshTokenExpiresAt;
             }
 
-            Response.Cookies.Append("refreshToken", result.RefreshToken, refreshCookieOptions);
+            Response.Cookies.Append("refreshToken", System.Web.HttpUtility.UrlEncode(result.RefreshToken), refreshCookieOptions);
         }
 
         // Set remember me token if requested
@@ -68,16 +69,16 @@ public class AuthController : ControllerBase
                 Path = "/"
             };
 
-            Response.Cookies.Append("rememberMe", result.RememberMeToken, rememberMeCookieOptions);
+            Response.Cookies.Append("rememberMe", System.Web.HttpUtility.UrlEncode(result.RememberMeToken), rememberMeCookieOptions);
         }
 
         var safeResult = new LoginResponse
         {
             Success = result.Success,
             Message = result.Message,
-            AccessToken = result.AccessToken, // Still need for Authorization header
-            RefreshToken = null, // Don't expose in response body
-            RememberMeToken = null, // Don't expose in response body
+            AccessToken = result.AccessToken,
+            RefreshToken = null,
+            RememberMeToken = null,
             AccessTokenExpiresAt = result.AccessTokenExpiresAt,
             RefreshTokenExpiresAt = result.RefreshTokenExpiresAt,
             RememberMeTokenExpiresAt = result.RememberMeTokenExpiresAt,
@@ -88,7 +89,7 @@ public class AuthController : ControllerBase
         return Ok(safeResult);
     }
 
-    [HttpPost("refresh-token")] // Add alias for frontend compatibility
+    [HttpPost("refresh-token")]
     public async Task<ActionResult<RefreshTokenResponse>> RefreshToken([FromBody] RefreshTokenRequest? request = null)
     {
         string? refreshToken = request?.RefreshToken;
@@ -109,6 +110,8 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "Refresh token or remember me token is required" });
         }
 
+        refreshToken = System.Web.HttpUtility.UrlDecode(refreshToken);
+
         var command = new RefreshTokenCommand
         {
             RefreshToken = refreshToken,
@@ -128,23 +131,20 @@ public class AuthController : ControllerBase
                 Path = "/"
             };
 
-            // Maintain original cookie behavior: session vs persistent
             if (result.IsRememberMe)
             {
                 cookieOptions.Expires = result.RefreshTokenExpiresAt;
             }
-            // No Expires = Session cookie for non-RememberMe
 
-            Response.Cookies.Append("refreshToken", result.RefreshToken, cookieOptions);
+            Response.Cookies.Append("refreshToken", System.Web.HttpUtility.UrlEncode(result.RefreshToken), cookieOptions);
         }
 
-        // Don't expose refresh token in response body when using cookies
         var safeResult = new RefreshTokenResponse
         {
             Success = result.Success,
             Message = result.Message,
-            AccessToken = result.AccessToken, // Still need for Authorization header
-            RefreshToken = null, // Don't expose in response body
+            AccessToken = result.AccessToken,
+            RefreshToken = null,
             AccessTokenExpiresAt = result.AccessTokenExpiresAt,
             RefreshTokenExpiresAt = result.RefreshTokenExpiresAt,
             IsRememberMe = result.IsRememberMe

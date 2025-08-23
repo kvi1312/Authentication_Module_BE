@@ -13,6 +13,6 @@ public class UserDto
     public bool IsActive { get; set; }
     public DateTime? LastLoginAt { get; set; }
     public DateTimeOffset CreatedDate { get; set; }
-    public List<string> Roles { get; set; } = new();
+    public List<RoleType> Roles { get; set; } = new();
     public UserType UserType { get; set; }
 }

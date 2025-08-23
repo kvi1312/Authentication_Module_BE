@@ -37,9 +37,6 @@ namespace Authentication.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsRevoked")
                         .HasColumnType("boolean");
 
-                    b.Property<bool>("IsUsed")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("JwtId")
                         .IsRequired()
                         .HasColumnType("text");
