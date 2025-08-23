@@ -1,11 +1,9 @@
 using Authentication.Application.Commands;
 using Authentication.Application.Dtos.Request;
 using Authentication.Application.Dtos.Response;
-using Authentication.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Web;
 
 namespace Authentication.API.Endpoints;
 

@@ -1,15 +1,15 @@
+using Authentication.Application.Dtos;
 using Authentication.Application.Dtos.Request;
 using Authentication.Application.Dtos.Response;
-using Authentication.Application.Dtos;
 using Authentication.Application.Extensions;
 using Authentication.Application.Interfaces;
 using Authentication.Application.Strategies;
+using Authentication.Domain.Configurations;
+using Authentication.Domain.Entities;
 using Authentication.Domain.Enums;
 using Authentication.Domain.Interfaces;
-using Authentication.Domain.Entities;
-using Microsoft.Extensions.Logging;
 using AutoMapper;
-using Authentication.Domain.Configurations;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Authentication.Infrastructure.Services;

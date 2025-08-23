@@ -1,4 +1,3 @@
-using Authentication.Application.Dtos;
 using Authentication.Application.Dtos.Response;
 using MediatR;
 

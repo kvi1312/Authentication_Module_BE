@@ -3,7 +3,6 @@ using Authentication.Application.Dtos;
 using Authentication.Application.Dtos.Response;
 using Authentication.Application.Extensions;
 using Authentication.Application.Interfaces;
-using Authentication.Domain.Constants;
 using Authentication.Domain.Entities;
 using Authentication.Domain.Enums;
 using Authentication.Domain.Interfaces;

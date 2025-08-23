@@ -5,7 +5,6 @@ using Authentication.Domain.Interfaces;
 using AutoMapper;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using System.Security.Claims;
 
 namespace Authentication.Application.Handlers;
 

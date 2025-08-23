@@ -1,5 +1,3 @@
-using Authentication.Application.Dtos;
-
 namespace Authentication.Application.Dtos.Response;
 
 public class UserManagementResponse

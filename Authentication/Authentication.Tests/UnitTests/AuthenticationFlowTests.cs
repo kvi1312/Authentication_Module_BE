@@ -1,5 +1,4 @@
 using Authentication.Application.Commands;
-using Authentication.Domain.Enums;
 using Xunit;
 
 namespace Authentication.Tests.UnitTests;

@@ -1,5 +1,4 @@
 ﻿using Authentication.Domain.Entities;
-using System.Threading.Tasks;
 
 namespace Authentication.Domain.Interfaces.Repositories;
 

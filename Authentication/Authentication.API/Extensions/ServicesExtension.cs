@@ -1,10 +1,9 @@
 ﻿
-using System.Text;
+using Authentication.Application.Mappings;
 using Authentication.Domain.Configurations;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Authentication.Application.Mappings;
-using AutoMapper;
+using System.Text;
 
 namespace Authentication.API.Extensions;
 
