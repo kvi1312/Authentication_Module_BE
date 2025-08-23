@@ -27,7 +27,7 @@ public class RefreshTokenRepository : RepositoryBase<RefreshToken>, IRefreshToke
 
     public async Task<IEnumerable<RefreshToken>> GetActiveByUserIdAsync(Guid userId)
     {
-        return await DbSet.Where(rt => rt.UserId == userId && !rt.IsUsed && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow)
+        return await DbSet.Where(rt => rt.UserId == userId && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow)
                           .ToListAsync();
     }
 

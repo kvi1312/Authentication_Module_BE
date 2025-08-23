@@ -1,5 +1,4 @@
 using Authentication.Application.Dtos.Request;
-using Authentication.Application.Dtos.Response;
 using Authentication.Application.Interfaces;
 using Authentication.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;

@@ -7,7 +7,6 @@ public class RefreshToken : IDateTracking
     public Guid Id { get; set; }
     public string Token { get; set; } = default!;
     public string JwtId { get; set; } = default!;
-    public bool IsUsed { get; set; }
     public bool IsRevoked { get; set; }
     public DateTime ExpiresAt { get; set; }
     public Guid UserId { get; set; }
@@ -31,12 +30,10 @@ public class RefreshToken : IDateTracking
             UserId = userId,
             CreatedDate = DateTimeOffset.UtcNow,
             ExpiresAt = DateTime.UtcNow.Add(validity),
-            IsUsed = false,
             IsRevoked = false
         };
     }
 
-    public void MarkAsUsed() => IsUsed = true;
     public void MarkAsRevoked() => IsRevoked = true;
-    public bool IsValid() => !IsUsed && !IsRevoked && DateTime.UtcNow < ExpiresAt;
+    public bool IsValid() => !IsRevoked && DateTime.UtcNow < ExpiresAt;
 }

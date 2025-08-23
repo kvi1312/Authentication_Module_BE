@@ -1,14 +1,15 @@
+using Authentication.Application.Dtos;
 using Authentication.Application.Dtos.Request;
 using Authentication.Application.Dtos.Response;
-using Authentication.Application.Dtos;
+using Authentication.Application.Extensions;
 using Authentication.Application.Interfaces;
 using Authentication.Application.Strategies;
+using Authentication.Domain.Configurations;
+using Authentication.Domain.Entities;
 using Authentication.Domain.Enums;
 using Authentication.Domain.Interfaces;
-using Authentication.Domain.Entities;
-using Microsoft.Extensions.Logging;
 using AutoMapper;
-using Authentication.Domain.Configurations;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Authentication.Infrastructure.Services;
@@ -113,8 +114,7 @@ public class AuthenticationService : IAuthenticationService
                     rememberMeTokenHash,
                     settings.GetRememberMeTokenExpiry()
                 );
-                // TODO: Implement RememberMeTokenRepository.AddAsync method
-                // await _unitOfWork.RememberMeTokensRepository.AddAsync(rememberMeEntity);
+                await _unitOfWork.RememberMeTokensRepository.AddAsync(rememberMeEntity);
             }
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -123,14 +123,15 @@ public class AuthenticationService : IAuthenticationService
 
             var userDto = _mapper.Map<UserDto>(authenticatedUser);
             userDto.UserType = detectedUserType!.Value;
-            userDto.Roles = roles;
+            userDto.Roles = roles.ToRoleTypes();
 
             return new LoginResponse
             {
                 Success = true,
                 Message = "Login successful",
                 AccessToken = accessToken,
-                ExpiresAt = DateTime.UtcNow.Add(settings.GetAccessTokenExpiry()),
+                AccessTokenExpiresAt = DateTime.UtcNow.Add(settings.GetAccessTokenExpiry()),
+                RefreshTokenExpiresAt = DateTime.UtcNow.Add(settings.GetRefreshTokenExpiry()),
                 User = userDto
             };
         }
@@ -197,7 +198,7 @@ public class AuthenticationService : IAuthenticationService
                 return new RefreshTokenResponse { Success = false, Message = "User not found or inactive" };
             }
 
-            storedRefreshToken.MarkAsUsed();
+            storedRefreshToken.MarkAsRevoked();
 
             var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
 
@@ -229,7 +230,8 @@ public class AuthenticationService : IAuthenticationService
                 Success = true,
                 AccessToken = newAccessToken,
                 RefreshToken = newRefreshToken,
-                ExpiresAt = newRefreshTokenEntity.ExpiresAt,
+                AccessTokenExpiresAt = DateTime.UtcNow.Add(settings.GetAccessTokenExpiry()),
+                RefreshTokenExpiresAt = newRefreshTokenEntity.ExpiresAt,
                 Message = "Token refreshed successfully"
             };
         }

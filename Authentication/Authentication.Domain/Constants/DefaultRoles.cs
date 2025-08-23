@@ -9,24 +9,23 @@ public static class DefaultRoles
         {
             UserType.EndUser, new List<(string, string)>
             {
-                (AuthenticationConstants.Roles.EndUser, "Standard end user access"),
-                (AuthenticationConstants.Roles.PremiumEndUser, "Premium end user with extended features")
+                ("Customer", "Standard customer access"),
+                ("Guest", "Guest user access")
             }
         },
         {
             UserType.Admin, new List<(string, string)>
             {
-                (AuthenticationConstants.Roles.Admin, "Standard administrative access"),
-                (AuthenticationConstants.Roles.SuperAdmin, "Full system administrative access"),
-                (AuthenticationConstants.Roles.SystemAdmin, "System-level administrative access")
+                ("Admin", "Standard administrative access"),
+                ("SuperAdmin", "Full system administrative access"),
             }
         },
         {
             UserType.Partner, new List<(string, string)>
             {
-                (AuthenticationConstants.Roles.Partner, "Standard partner access"),
-                (AuthenticationConstants.Roles.PartnerAdmin, "Partner administrative access"),
-                (AuthenticationConstants.Roles.PartnerUser, "Partner user access")
+                ("Partner", "Standard partner access"),
+                ("Manager", "Management level access"),
+                ("Employee", "Employee level access")
             }
         }
     };

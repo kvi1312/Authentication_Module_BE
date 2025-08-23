@@ -40,21 +40,21 @@ public class TokenConfigService : ITokenConfigService
 
         if (request.AccessTokenExpiryMinutes.HasValue)
         {
-            var minutes = Math.Max(1, Math.Min(60, request.AccessTokenExpiryMinutes.Value)); // 1-60 minutes
+            var minutes = Math.Max(1, Math.Min(60, request.AccessTokenExpiryMinutes.Value));
             settings.ExpiryMinutes = minutes;
             _logger.LogInformation("Updated AccessToken expiry to {Minutes} minutes", minutes);
         }
 
         if (request.RefreshTokenExpiryDays.HasValue)
         {
-            var days = Math.Max(0.01, Math.Min(7, request.RefreshTokenExpiryDays.Value)); // 0.01-7 days
+            var days = Math.Max(0.01, Math.Min(7, request.RefreshTokenExpiryDays.Value));
             settings.RefreshTokenExpiryDays = days;
             _logger.LogInformation("Updated RefreshToken expiry to {Days} days", days);
         }
 
         if (request.RememberMeTokenExpiryDays.HasValue)
         {
-            var days = Math.Max(0.1, Math.Min(30, request.RememberMeTokenExpiryDays.Value)); // 0.1-30 days
+            var days = Math.Max(0.1, Math.Min(30, request.RememberMeTokenExpiryDays.Value));
             settings.RememberMeTokenExpiryDays = days;
             _logger.LogInformation("Updated RememberMeToken expiry to {Days} days", days);
         }
@@ -102,7 +102,6 @@ public class TokenConfigService : ITokenConfigService
         return $"{duration.TotalMinutes:F0} minutes";
     }
 
-    // Method to get current settings for other services
     public static JwtSettings GetRuntimeSettings(IOptionsMonitor<JwtSettings> options)
     {
         return _runtimeSettings ?? options.CurrentValue;

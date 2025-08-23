@@ -1,5 +1,4 @@
 using Authentication.Application.Interfaces;
-using System.Security.Claims;
 
 namespace Authentication.API.Middleware;
 

@@ -7,15 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Common\Exceptions\**" />
-    <Compile Remove="Common\Interfaces\**" />
-    <EmbeddedResource Remove="Common\Exceptions\**" />
-    <EmbeddedResource Remove="Common\Interfaces\**" />
-    <None Remove="Common\Exceptions\**" />
-    <None Remove="Common\Interfaces\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="AutoMapper" Version="12.0.0" />
     <PackageReference Include="FluentValidation" Version="12.0.0" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0" />
@@ -25,10 +16,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Authentication.Domain\Authentication.Domain.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Common\Models\" />
   </ItemGroup>
 
 </Project>

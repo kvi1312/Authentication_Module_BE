@@ -1,6 +1,5 @@
 using Authentication.Application.Dtos.Request;
 using Authentication.Application.Dtos.Response;
-using Authentication.Domain.Enums;
 
 namespace Authentication.Application.Interfaces;
 

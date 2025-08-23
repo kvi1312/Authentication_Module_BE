@@ -1,6 +1,5 @@
 ﻿using Authentication.Domain.Interfaces.Repositories;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
 using System.Linq.Expressions;
 
 namespace Authentication.Infrastructure.Repositories;

@@ -1,8 +1,8 @@
 using Authentication.Application.Commands;
 using Authentication.Application.Dtos;
 using Authentication.Application.Dtos.Response;
+using Authentication.Application.Extensions;
 using Authentication.Application.Interfaces;
-using Authentication.Domain.Constants;
 using Authentication.Domain.Entities;
 using Authentication.Domain.Enums;
 using Authentication.Domain.Interfaces;
@@ -91,7 +91,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, RegisterR
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             var userDto = _mapper.Map<UserDto>(user);
-            userDto.Roles = new List<string> { role.Name };
+            userDto.Roles = new List<string> { role.Name }.ToRoleTypes();
             userDto.UserType = UserType.EndUser; // Public registration always creates EndUser
 
             _logger.LogInformation("Registration successful for user: {Username} as EndUser", request.Username);
@@ -118,10 +118,10 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, RegisterR
     {
         return userType switch
         {
-            Authentication.Domain.Enums.UserType.EndUser => AuthenticationConstants.Roles.EndUser,
-            Authentication.Domain.Enums.UserType.Admin => AuthenticationConstants.Roles.Admin,
-            Authentication.Domain.Enums.UserType.Partner => AuthenticationConstants.Roles.Partner,
-            _ => AuthenticationConstants.Roles.EndUser
+            Authentication.Domain.Enums.UserType.EndUser => "Customer",
+            Authentication.Domain.Enums.UserType.Admin => "Admin",
+            Authentication.Domain.Enums.UserType.Partner => "Partner",
+            _ => "Customer"
         };
     }
 }

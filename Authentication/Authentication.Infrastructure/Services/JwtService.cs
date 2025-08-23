@@ -1,15 +1,14 @@
+using Authentication.Application.Interfaces;
+using Authentication.Domain.Configurations;
+using Authentication.Domain.Entities;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using System.Collections.Concurrent;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using Authentication.Application.Interfaces;
-using Authentication.Domain.Configurations;
-using Authentication.Domain.Entities;
-using Authentication.Infrastructure.Services;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using JwtRegisteredClaimNames = Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames;
 
 namespace Authentication.Infrastructure.Services;
@@ -142,6 +141,12 @@ public class JwtService : IJwtService
     {
         _blacklistedTokens.TryAdd(jti, expiry);
         return Task.CompletedTask;
+    }
+
+    public DateTime GetAccessTokenExpiryTime()
+    {
+        var settings = GetCurrentSettings();
+        return DateTime.UtcNow.AddMinutes(settings.ExpiryMinutes);
     }
 
     private JwtSecurityToken GetToken(string token)

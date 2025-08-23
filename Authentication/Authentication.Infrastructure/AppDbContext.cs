@@ -1,13 +1,10 @@
 using Authentication.Domain.Entities;
 using Authentication.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using ILogger = Serilog.ILogger;
 namespace Authentication.Infrastructure;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options, ILogger logger) : DbContext(options)
+public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
-    private readonly ILogger _logger = logger ?? throw new ArgumentNullException("Missing logger configuration");
-
     public DbSet<User> Users { get; set; }
     public DbSet<Role> Roles { get; set; }
     public DbSet<UserRole> UserRoles { get; set; }
@@ -105,7 +102,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ILogger logger
                     if (item.Entity is IDateTracking modifiedEntity)
                     {
                         modifiedEntity.LastModifiedDate = DateTime.UtcNow;
-                        item.State = EntityState.Added;
+                        item.State = EntityState.Modified;
                     }
                     break;
                 default:

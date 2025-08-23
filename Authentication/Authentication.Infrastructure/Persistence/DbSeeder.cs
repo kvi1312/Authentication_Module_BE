@@ -51,8 +51,8 @@ public class DbSeeder : IHostedService
         _logger.LogInformation("Seeding roles...");
 
         var existingRoles = await context.Roles.Select(r => r.Name).ToListAsync(cancellationToken);
-
         var rolesToAdd = new List<Role>();
+        var uniqueRoles = new HashSet<string>();
 
         foreach (var userType in Enum.GetValues<UserType>())
         {
@@ -60,11 +60,21 @@ public class DbSeeder : IHostedService
             {
                 foreach (var (roleName, description) in roles)
                 {
-                    if (!existingRoles.Contains(roleName))
+                    // Check if role doesn't exist in database AND hasn't been added to our batch yet
+                    if (!existingRoles.Contains(roleName) && !uniqueRoles.Contains(roleName))
                     {
                         var role = Role.Create(roleName, description, userType);
                         rolesToAdd.Add(role);
+                        uniqueRoles.Add(roleName);
                         _logger.LogInformation("Will create role: {RoleName} for user type: {UserType}", roleName, userType);
+                    }
+                    else if (existingRoles.Contains(roleName))
+                    {
+                        _logger.LogInformation("Role {RoleName} already exists, skipping", roleName);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Role {RoleName} already in batch for creation, skipping duplicate", roleName);
                     }
                 }
             }
@@ -94,19 +104,67 @@ public class DbSeeder : IHostedService
             Password = "Admin@123",
             FirstName = "System",
             LastName = "Administrator",
-            RoleName = AuthenticationConstants.Roles.SuperAdmin,
+            RoleName = "SuperAdmin",
             UserType = UserType.Admin
         }, cancellationToken);
 
-        // Create default EndUser
+        // Create Admin user
         await CreateUserIfNotExists(context, passwordService, new UserSeedData
         {
-            Username = "user",
-            Email = "user@authmodule.com",
-            Password = "User@123",
-            FirstName = "Test",
+            Username = "moderator",
+            Email = "moderator@authmodule.com",
+            Password = "Moderator@123",
+            FirstName = "Admin",
             LastName = "User",
-            RoleName = AuthenticationConstants.Roles.EndUser,
+            RoleName = "Admin",
+            UserType = UserType.Admin
+        }, cancellationToken);
+
+        // Create Manager user
+        await CreateUserIfNotExists(context, passwordService, new UserSeedData
+        {
+            Username = "manager",
+            Email = "manager@authmodule.com",
+            Password = "Manager@123",
+            FirstName = "Manager",
+            LastName = "User",
+            RoleName = "Manager",
+            UserType = UserType.Admin
+        }, cancellationToken);
+
+        // Create Employee user
+        await CreateUserIfNotExists(context, passwordService, new UserSeedData
+        {
+            Username = "employee",
+            Email = "employee@authmodule.com",
+            Password = "Employee@123",
+            FirstName = "Employee",
+            LastName = "User",
+            RoleName = "Employee",
+            UserType = UserType.Admin
+        }, cancellationToken);
+
+        // Create default Customer user
+        await CreateUserIfNotExists(context, passwordService, new UserSeedData
+        {
+            Username = "customer",
+            Email = "customer@authmodule.com",
+            Password = "Customer@123",
+            FirstName = "Test",
+            LastName = "Customer",
+            RoleName = "Customer",
+            UserType = UserType.EndUser
+        }, cancellationToken);
+
+        // Create Guest user
+        await CreateUserIfNotExists(context, passwordService, new UserSeedData
+        {
+            Username = "guest",
+            Email = "guest@authmodule.com",
+            Password = "Guest@123",
+            FirstName = "Guest",
+            LastName = "User",
+            RoleName = "Guest",
             UserType = UserType.EndUser
         }, cancellationToken);
 
@@ -116,9 +174,9 @@ public class DbSeeder : IHostedService
             Username = "partner",
             Email = "partner@authmodule.com",
             Password = "Partner@123",
-            FirstName = "Test",
+            FirstName = "Business",
             LastName = "Partner",
-            RoleName = AuthenticationConstants.Roles.Partner,
+            RoleName = "Partner",
             UserType = UserType.Partner
         }, cancellationToken);
 

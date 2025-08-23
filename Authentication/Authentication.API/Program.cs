@@ -4,7 +4,6 @@ using Authentication.API.Middleware;
 using Authentication.Infrastructure;
 using Authentication.Infrastructure.Persistence;
 using Carter;
-using MediatR;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -22,18 +21,17 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("http://localhost:5173")
             .AllowAnyMethod()
-            .AllowAnyHeader();
-
+            .AllowAnyHeader()
+            .AllowCredentials();
     });
 });
 
 builder.Host.AddAppConfigurations();
 builder.Services.AddCarter();
 
-// Add MediatR
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Authentication.Application.Handlers.LoginCommandHandler).Assembly));
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Authentication.Application.Commands.LoginCommand).Assembly));
 
 builder.Services.AddConfigurationSettings(builder.Configuration);
 builder.Services.AddInfrastructureServices(builder.Configuration);
@@ -54,7 +52,8 @@ try
         app.MapCarter();
     }
 
-    app.UseHttpsRedirection();
+    // Disable HTTPS redirection in development to prevent issues with frontend
+    // app.UseHttpsRedirection();
 
     // Add CORS middleware - Allow all origins
     app.UseCors("AllowAll");
@@ -87,4 +86,7 @@ finally
     Log.Information("Shut down Authentication API complete");
     Log.CloseAndFlush();
 }
+
+// Make Program class accessible for integration testing
+public partial class Program { }
 

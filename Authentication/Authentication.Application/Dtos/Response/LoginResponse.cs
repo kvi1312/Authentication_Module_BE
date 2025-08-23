@@ -1,5 +1,3 @@
-using Authentication.Application.Dtos;
-
 namespace Authentication.Application.Dtos.Response;
 
 public class LoginResponse
@@ -9,7 +7,9 @@ public class LoginResponse
     public string? AccessToken { get; set; }
     public string? RefreshToken { get; set; }
     public string? RememberMeToken { get; set; }
-    public DateTime? ExpiresAt { get; set; }
+    public DateTime? AccessTokenExpiresAt { get; set; }
+    public DateTime? RefreshTokenExpiresAt { get; set; }
+    public DateTime? RememberMeTokenExpiresAt { get; set; }
     public UserDto? User { get; set; }
     public string? SessionId { get; set; }
 }

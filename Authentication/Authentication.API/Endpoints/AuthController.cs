@@ -1,7 +1,6 @@
 using Authentication.Application.Commands;
 using Authentication.Application.Dtos.Request;
 using Authentication.Application.Dtos.Response;
-using Authentication.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -36,25 +35,39 @@ public class AuthController : ControllerBase
 
         if (!result.Success) return BadRequest(result);
 
-        // Set secure cookies for remember me functionality
-        if (request.RememberMe && !string.IsNullOrEmpty(result.RefreshToken))
+        if (!string.IsNullOrEmpty(result.RefreshToken))
         {
-            var cookieOptions = new CookieOptions
+            // Normal Login : No Expires = Session cookie (deleted when browser closes)
+            var refreshCookieOptions = new CookieOptions
             {
                 HttpOnly = true,
                 Secure = false,
                 SameSite = SameSiteMode.Strict,
-                Expires = DateTimeOffset.UtcNow.AddDays(30),
                 Path = "/"
             };
 
-            Response.Cookies.Append("refreshToken", result.RefreshToken, cookieOptions);
-
-
-            if (!string.IsNullOrEmpty(result.RememberMeToken))
+            // Remember Me = Persistent cookie
+            if (request.RememberMe)
             {
-                Response.Cookies.Append("rememberMe", result.RememberMeToken, cookieOptions);
+                refreshCookieOptions.Expires = result.RefreshTokenExpiresAt;
             }
+
+            Response.Cookies.Append("refreshToken", System.Web.HttpUtility.UrlEncode(result.RefreshToken), refreshCookieOptions);
+        }
+
+        // Set remember me token if requested
+        if (request.RememberMe && !string.IsNullOrEmpty(result.RememberMeToken))
+        {
+            var rememberMeCookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Strict,
+                Expires = result.RememberMeTokenExpiresAt,
+                Path = "/"
+            };
+
+            Response.Cookies.Append("rememberMe", System.Web.HttpUtility.UrlEncode(result.RememberMeToken), rememberMeCookieOptions);
         }
 
         var safeResult = new LoginResponse
@@ -62,14 +75,19 @@ public class AuthController : ControllerBase
             Success = result.Success,
             Message = result.Message,
             AccessToken = result.AccessToken,
-            ExpiresAt = result.ExpiresAt,
-            User = result.User
+            RefreshToken = null,
+            RememberMeToken = null,
+            AccessTokenExpiresAt = result.AccessTokenExpiresAt,
+            RefreshTokenExpiresAt = result.RefreshTokenExpiresAt,
+            RememberMeTokenExpiresAt = result.RememberMeTokenExpiresAt,
+            User = result.User,
+            SessionId = result.SessionId
         };
 
         return Ok(safeResult);
     }
 
-    [HttpPost("refresh")]
+    [HttpPost("refresh-token")]
     public async Task<ActionResult<RefreshTokenResponse>> RefreshToken([FromBody] RefreshTokenRequest? request = null)
     {
         string? refreshToken = request?.RefreshToken;
@@ -79,10 +97,18 @@ public class AuthController : ControllerBase
             refreshToken = Request.Cookies["refreshToken"];
         }
 
+        // If no refresh token, try remember me token as fallback
         if (string.IsNullOrEmpty(refreshToken))
         {
-            return BadRequest(new { message = "Refresh token is required" });
+            refreshToken = Request.Cookies["rememberMe"];
         }
+
+        if (string.IsNullOrEmpty(refreshToken))
+        {
+            return BadRequest(new { message = "Refresh token or remember me token is required" });
+        }
+
+        refreshToken = System.Web.HttpUtility.UrlDecode(refreshToken);
 
         var command = new RefreshTokenCommand
         {
@@ -100,14 +126,29 @@ public class AuthController : ControllerBase
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.Strict,
-                Expires = result.ExpiresAt,
                 Path = "/"
             };
 
-            Response.Cookies.Append("refreshToken", result.RefreshToken, cookieOptions);
+            if (result.IsRememberMe)
+            {
+                cookieOptions.Expires = result.RefreshTokenExpiresAt;
+            }
+
+            Response.Cookies.Append("refreshToken", System.Web.HttpUtility.UrlEncode(result.RefreshToken), cookieOptions);
         }
 
-        return result.Success ? Ok(result) : BadRequest(result);
+        var safeResult = new RefreshTokenResponse
+        {
+            Success = result.Success,
+            Message = result.Message,
+            AccessToken = result.AccessToken,
+            RefreshToken = null,
+            AccessTokenExpiresAt = result.AccessTokenExpiresAt,
+            RefreshTokenExpiresAt = result.RefreshTokenExpiresAt,
+            IsRememberMe = result.IsRememberMe
+        };
+
+        return result.Success ? Ok(safeResult) : BadRequest(result);
     }
 
     [HttpPost("logout")]
